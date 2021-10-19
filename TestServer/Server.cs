@@ -38,74 +38,126 @@ namespace Backend
         static async void communication(Socket clientSock)
         {
             byte[] buff = new byte[4096];
-            Array.Clear(buff, 0, buff.Length);
-            Console.WriteLine("4");
-            int recvbyte = await SocketTCP.SocketRecv(clientSock, buff);
-            Console.WriteLine("5");
-
-            if(recvbyte > 0)
+            int recvbyte;
+            int offset;
+            while(true)
             {
-                Console.WriteLine("6");
-                int offset = 0;
-                DataPacket.HeaderByte headerbyte = (DataPacket.HeaderByte) DataPacket.ReadInt(buff, ref offset);
-                Console.WriteLine("7");
-                switch(headerbyte)
+                recvbyte = -1;
+                Array.Clear(buff, 0, buff.Length);
+                Console.WriteLine("4");
+                try
                 {
-                    case DataPacket.HeaderByte.CheckAlive:
+                    recvbyte = await SocketTCP.SocketRecv(clientSock, buff);
+                }
+                catch(SocketException ex)
+                {
+                    break;
+                }
+                Console.WriteLine("5");
+
+                if(recvbyte > 0)
+                {
+                    Console.WriteLine("6");
+                    offset = 0;
+                    DataPacket.HeaderByte headerbyte = (DataPacket.HeaderByte) DataPacket.ReadInt(buff, ref offset);
+                    Console.WriteLine("7");
+                    switch(headerbyte)
                     {
-                        break;
-                    }
-                    case DataPacket.HeaderByte.ButtonPressed:
-                    {
-                        string playerID = UserMatching[clientSock];
-                        Character.CharacterMoving(buff, playerID);
-                        break;
-                    }
-                    case DataPacket.HeaderByte.SendPosition:
-                    {
-                        break;
-                    }
-                    case DataPacket.HeaderByte.LoginCheckFlag:
-                    {
-                        Console.WriteLine("8");
-                        await LoginManager.LoginCheck(clientSock, strConn, buff, UserPositions, UserMatching);
-                        Console.WriteLine("9");
-                        break;
-                    }
-                    case DataPacket.HeaderByte.SignUpDuplicationCheck:
-                    {
-                        await SignUpManager.IDDuplicationCheck(clientSock, strConn, buff);
-                        break;
-                    }
-                    case DataPacket.HeaderByte.CreateAccount:
-                    {
-                        await SignUpManager.CreatingAccount(clientSock, strConn, buff);
-                        break;
-                    }
-                    case DataPacket.HeaderByte.GameStart:
-                    {
-                        string myID = "";
-                        if(UserMatching.TryGetValue(clientSock, out myID))
+                        case DataPacket.HeaderByte.CheckAlive:
                         {
-                            Task sendingposition = new Task( () => SendPacket.SendingPosition(clientSock, myID, UserPositions) );
-                            sendingposition.Start();
+                            break;
                         }
-                        else
+                        case DataPacket.HeaderByte.ButtonPressed:
                         {
-                            Console.WriteLine("user doesn't exist");
+                            string playerID = UserMatching[clientSock];
+                            Character.CharacterMoving(buff, playerID);
+                            break;
                         }
-                        break;
+                        case DataPacket.HeaderByte.SendPosition:
+                        {
+                            break;
+                        }
+                        case DataPacket.HeaderByte.LoginCheckFlag:
+                        {
+                            Console.WriteLine("8");
+                            await LoginManager.LoginCheck(clientSock, strConn, buff, UserPositions, UserMatching);
+                            Console.WriteLine("9");
+                            break;
+                        }
+                        case DataPacket.HeaderByte.SignUpDuplicationCheck:
+                        {
+                            await SignUpManager.IDDuplicationCheck(clientSock, strConn, buff);
+                            break;
+                        }
+                        case DataPacket.HeaderByte.CreateAccount:
+                        {
+                            await SignUpManager.CreatingAccount(clientSock, strConn, buff);
+                            break;
+                        }
+                        case DataPacket.HeaderByte.GameStart:
+                        {
+                            string myID = "";
+                            if(UserMatching.TryGetValue(clientSock, out myID))
+                            {
+                                Task sendingposition = new Task( () => SendPacket.SendingPosition(clientSock, myID, UserPositions) );
+                                sendingposition.Start();
+                            }
+                            else
+                            {
+                                Console.WriteLine("user doesn't exist");
+                            }
+                            break;
+                        }
+                    }
+                }
+                else
+                {
+
+                }
+            }
+            
+            
+        }
+
+        public static async Task<int> AfterSocketClosed(Socket clientSock)
+        {
+            int ret = 0;
+            string userID = UserMatching[clientSock];
+            Console.WriteLine(userID + " is closing the game now");
+            UserMatching.Remove(clientSock);
+            DataPacket.PositionStruct userPosition = UserPositions[userID];
+            UserPositions.Remove(userID);
+            MySqlConnection thisconn = null;
+
+            try
+            {
+                using(thisconn = new MySqlConnection(strConn))
+                {
+                    thisconn.Open();
+                    string cmd = "update position set X = @xvalue, Y = @yvalue where ID = @userID";
+                    MySqlCommand newsqlcmd = new MySqlCommand(cmd, thisconn);
+                    newsqlcmd.Parameters.AddWithValue("@xvalue", userPosition.X);
+                    newsqlcmd.Parameters.AddWithValue("@yvalue", userPosition.Y);
+                    newsqlcmd.Parameters.AddWithValue("@userID", userID);
+
+                    int count = await newsqlcmd.ExecuteNonQueryAsync();
+
+                    if(count == 1)
+                    {
+                        ret = 1;
+                    }
+                    else
+                    {
+                        ret = -1;
                     }
                 }
             }
-            else
+            catch(Exception ex)
             {
-
+                throw;
             }
-            Console.WriteLine("10");
-            Task commutask = new Task( () => communication(clientSock));
-            Console.WriteLine("11");
-            commutask.Start();
-        }
+
+            return ret;
+        } 
     }
 }

@@ -34,54 +34,54 @@ namespace Client
 
         async void RecvCommunication()
         {
-            if(clientSock.Connected)
+            while(true)
             {
                 byte[] buff = new byte[4096];
-                Debug.Log("1");
-                int recvbytes = await SocketRecvAsync(clientSock, buff);
-                Debug.Log("2");
-
-                if (recvbytes > 0)
+                int recvbytes;
+                if (clientSock.Connected)
                 {
-                    int offset = 0;
-                    DataStruct.HeaderByte headerbyte = (DataStruct.HeaderByte) DataStruct.ReadInt(buff, ref offset);
-                    switch (headerbyte)
+                    Array.Clear(buff, 0, buff.Length);
+                    recvbytes = await SocketRecvAsync(clientSock, buff);
+
+                    if (recvbytes > 0)
                     {
-                        case DataStruct.HeaderByte.CheckAlive:
+                        int offset = 0;
+                        DataStruct.HeaderByte headerbyte = (DataStruct.HeaderByte)DataStruct.ReadInt(buff, ref offset);
+                        switch (headerbyte)
                         {
-                            break;
-                        }
-                        case DataStruct.HeaderByte.ButtonPressed:
-                        {
-                            break;
-                        }
-                        case DataStruct.HeaderByte.SendPosition:
-                        {
-                            ReceivingPosition.CharacterPosition(buff);
-                            break;
-                        }
-                        case DataStruct.HeaderByte.LoginCheckFlag:
-                        {
-                            Debug.Log("4");
-                            await LoginManage.LoginResult(buff);
-                            break;
-                        }
-                        case DataStruct.HeaderByte.SignUpDuplicationCheck:
-                        {
-                            SignUpManage.IDDuplicationResult(buff);
-                            break;
-                        }
-                        case DataStruct.HeaderByte.CreateAccount:
-                        {
-                            SignUpManage.CreateAccountResult(buff);
-                            break;
+                            case DataStruct.HeaderByte.CheckAlive:
+                                {
+                                    break;
+                                }
+                            case DataStruct.HeaderByte.ButtonPressed:
+                                {
+                                    break;
+                                }
+                            case DataStruct.HeaderByte.SendPosition:
+                                {
+                                    ReceivingPosition.CharacterPosition(buff);
+                                    break;
+                                }
+                            case DataStruct.HeaderByte.LoginCheckFlag:
+                                {
+                                    Debug.Log("4");
+                                    await LoginManage.LoginResult(buff);
+                                    break;
+                                }
+                            case DataStruct.HeaderByte.SignUpDuplicationCheck:
+                                {
+                                    SignUpManage.IDDuplicationResult(buff);
+                                    break;
+                                }
+                            case DataStruct.HeaderByte.CreateAccount:
+                                {
+                                    SignUpManage.CreateAccountResult(buff);
+                                    break;
+                                }
                         }
                     }
                 }
             }
-
-            Task commutask = new Task(() => RecvCommunication());
-            commutask.Start();
         }
 
         public static Socket SocketConnect()
