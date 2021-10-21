@@ -27,9 +27,9 @@ namespace Client
 
         public static void CharacterPosition(byte[] buff)
         {
-            if(otherPlayers.Count > 0)
+            deletedPlayer.Clear();
+            if (otherPlayers.Count > 0)
             {
-                deletedPlayer.Clear();
                 foreach(KeyValuePair<string, GameObject> kvp in otherPlayers)
                 {
                     deletedPlayer.Add(kvp.Key);
@@ -48,7 +48,10 @@ namespace Client
                 int length = DataStruct.ReadInt(buff, ref offset);
                 string otherPlayerID = DataStruct.ReadString(buff, ref offset, length);
                 DataStruct.PositionStruct otherPosition = DataStruct.RawDeSerialize(buff, ref offset);
-                deletedPlayer.Remove(otherPlayerID);
+                if(deletedPlayer.Contains(otherPlayerID))
+                {
+                    deletedPlayer.Remove(otherPlayerID);
+                }
                 Debug.Log("other player id : " + otherPlayerID + " , position : " + otherPosition.X.ToString() + ", " + otherPosition.Y.ToString());
                 GameObject otherPlayer;
                 if(otherPlayers.TryGetValue(otherPlayerID, out otherPlayer))
@@ -65,13 +68,17 @@ namespace Client
 
             if(deletedPlayer.Count > 0)
             {
-                foreach(string deletedID in deletedPlayer)
+                Debug.Log("deleting start");
+                for(int i = 0; i < deletedPlayer.Count; i++)
                 {
-                    GameObject deletingObject = otherPlayers[deletedID];
-                    otherPlayers.Remove(deletedID);
+                    GameObject deletingObject = otherPlayers[deletedPlayer[i]];
+                    otherPlayers.Remove(deletedPlayer[i]);
                     Destroy(deletingObject);
                 }
+                Debug.Log("deleting end");
             }
+
+            Debug.Log("end of character position");
         }
     }
 }

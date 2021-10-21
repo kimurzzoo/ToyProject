@@ -40,8 +40,10 @@ namespace Client
                 int recvbytes;
                 if (clientSock.Connected)
                 {
+                    Debug.Log("recv start");
                     Array.Clear(buff, 0, buff.Length);
                     recvbytes = await SocketRecvAsync(clientSock, buff);
+                    Debug.Log("recv end");
 
                     if (recvbytes > 0)
                     {
@@ -81,7 +83,9 @@ namespace Client
                         }
                     }
                 }
+                await Task.Delay(5);
             }
+            Debug.Log("commu end");
         }
 
         public static Socket SocketConnect()

@@ -35,10 +35,13 @@ namespace Backend
                 }
                 catch(SocketException ex)
                 {
+                    Console.WriteLine("closing socket of " + myID);
                     await Server.AfterSocketClosed(clientSock);
                     break;
                 }
+                await Task.Delay(20);
             }
+            Console.WriteLine("end send packet to " + myID);
         }
     }
 }
